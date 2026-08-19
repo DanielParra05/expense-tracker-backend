@@ -159,5 +159,5 @@ this.logger.log({ msg: 'User created', userId: id, groupId }); // ✓
 
 ### Comments and dead code
 
-- Comments explain *why*, never *what*. DO NOT OVER COMMENT. USE AS LESS AS POSIBLE COMMENTES, ONLY WHEN IT IS ACTUALLY NECESARY.
+- Comments explain *why*, never *what*. DO NOT OVER COMMENT. USE AS LESS AS POSIBLE COMMENTS, ONLY WHEN IT IS ACTUALLY NECESARY.
 - Delete commented-out code and unused exports. Git remembers.

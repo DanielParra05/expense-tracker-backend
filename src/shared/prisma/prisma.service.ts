@@ -25,7 +25,9 @@ export class PrismaService
   }
 
   async onModuleInit(): Promise<void> {
-    await this.$connect();
+    // $connect() resolves even when the database is unreachable: the driver
+    // adapter wraps a lazy pool, so only a real query proves connectivity.
+    await this.$queryRaw`SELECT 1`;
     this.logger.log({ msg: 'Database connection established' });
   }
 

@@ -29,11 +29,17 @@ export class PrismaExceptionFilter implements ExceptionFilter<Prisma.PrismaClien
   ): void {
     const { status, body } = toClientFacingError(exception.code);
 
-    this.logger.error({
-      msg: body.code,
-      statusCode: status,
-      prismaCode: exception.code,
-    });
+    this.logger.error(
+      {
+        msg: body.code,
+        statusCode: status,
+        prismaCode: exception.code,
+        detail: exception.message,
+        meta: exception.meta,
+        clientVersion: exception.clientVersion,
+      },
+      exception.stack,
+    );
 
     sendError(host, status, body);
   }
