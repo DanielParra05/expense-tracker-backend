@@ -117,6 +117,23 @@ Follow them when writing or modifying code. If a rule conflicts with existing co
   or rethrow.
 - Only catch what you can act on. Let the global filter handle the rest.
 - Error messages are actionable and safe: no stack traces, SQL, or secrets in responses.
+- Never return HTTP status codes in a response body — the status line already carries them.
+- Every error response is `{ code, message }`, plus `fields` for validation failures. `code`
+  is a stable `UPPER_SNAKE_CASE` identifier the frontend maps to user-facing copy; `message`
+  is a developer aid and is never rendered to users.
+- Error codes belong to the module that owns them: an `as const` object plus a same-named
+  derived type in that module's `domain/errors.ts`, prefixed with the module name
+  (`USER_NOT_FOUND`). Annotate each error class's `code` with that type — without the
+  annotation a typo compiles. Only codes belonging to no module live in
+  `shared/errors/shared-error-code.ts`.
+- `shared/` never imports from `modules/`. There is deliberately no central union of every
+  error code: a single response shape, not a single type, is what the frontend contract needs.
+- `DomainExceptionFilter` maps to HTTP status by base class (`NotFoundError`→404,
+  `ConflictError`→409, `ValidationError`→400), never by code. Adding a module code must never
+  require editing a filter.
+- Exception filters serialize through `sendError` and never call `response.json()` directly,
+  so every error body is typed `ErrorResponse`. Logging stays each filter's own decision —
+  keep it out of the shared helper.
 
 ### Async
 
