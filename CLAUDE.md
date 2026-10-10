@@ -66,7 +66,9 @@ Everything starts just being a service like 'user'. Once it grows we can layer i
 
 The repository returns User, never Prisma.User. That's what users.mapper.ts is for. Even at five lines it earns its place — it's where passwordHash gets dropped and where Decimal becomes integer cents in the expenses module.
 
-Controllers inject use cases only. A controller reaching for UsersRepository is the shortcut that quietly collapses the whole structure.
+Controllers inject services or use cases, never repositories. A controller reaching for UserRepository is the shortcut that quietly collapses the whole structure.
+
+Repository lookups return `null` when a record doesn't exist; absence isn't a failure at that layer. The service decides whether it is and throws the domain error (`UserNotFoundError`).
 
 ##  Rules for code
 Follow them when writing or modifying code. If a rule conflicts with existing code in a file, match the file's conventions and mention the inconsistency rather than silently reformatting.
@@ -76,7 +78,8 @@ Follow them when writing or modifying code. If a rule conflicts with existing co
 - `strict` mode is non-negotiable. Never weaken `tsconfig.json` to make code compile.
 - No `any`. Use `unknown` plus narrowing, generics, or a proper type. `as` casts are a
   last resort and need a comment explaining why they're safe.
-- No non-null assertions (`!`). Narrow the type or handle the null case.
+- No non-null assertions (`!`). Narrow the type or handle the null case. Exception:
+  definite-assignment `!` on class-validator DTO properties (`readonly email!: string`).
 - Let TypeScript infer local variables and return types of trivial functions; annotate
   public method signatures, exported functions, and anything crossing a module boundary.
 - Prefer `type` for unions and function signatures, `interface` for object contracts that
@@ -95,7 +98,6 @@ Follow them when writing or modifying code. If a rule conflicts with existing co
   no `I` prefix on interfaces.
 - Files: `kebab-case` with the NestJS suffix convention —
   `user.service.ts`, `create-user.dto.ts`, `auth.guard.ts`, `user.repository.ts`.
-- One primary export per file; the filename matches it.
 
 ### Functions
 
@@ -110,7 +112,8 @@ Follow them when writing or modifying code. If a rule conflicts with existing co
 
 ### Error handling
 
-- Throw, don't return error sentinels or `null` to signal failure.
+- Throw, don't return error sentinels or `null` to signal failure. A repository returning
+  `null` for "not found" is absence, not failure; the service turns it into a domain error.
 - Services throw domain-meaningful errors; an exception filter maps them to HTTP status
   codes. Avoid scattering `HttpException` through business logic.
 - Never swallow an error. No empty `catch {}`. If you catch, either handle it, enrich it,

@@ -13,32 +13,32 @@ import {
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import type { UserResponseDto } from './dto/user-response.dto';
-import { usersMapper } from './users.mapper';
-import { UsersService } from './users.service';
+import { userMapper } from './user.mapper';
+import { UserService } from './user.service';
 
 @Controller('users')
-export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+export class UserController {
+  constructor(private readonly userService: UserService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateUserDto): Promise<UserResponseDto> {
-    const user = await this.usersService.create(dto);
-    return usersMapper.toResponse(user);
+    const user = await this.userService.create(dto);
+    return userMapper.toResponse(user);
   }
 
   @Get()
   async findAll(): Promise<UserResponseDto[]> {
-    const users = await this.usersService.findAll();
-    return users.map((user) => usersMapper.toResponse(user));
+    const users = await this.userService.findAll();
+    return users.map((user) => userMapper.toResponse(user));
   }
 
   @Get(':id')
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<UserResponseDto> {
-    const user = await this.usersService.findById(id);
-    return usersMapper.toResponse(user);
+    const user = await this.userService.findById(id);
+    return userMapper.toResponse(user);
   }
 
   @Patch(':id')
@@ -46,13 +46,13 @@ export class UsersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    const user = await this.usersService.update(id, dto);
-    return usersMapper.toResponse(user);
+    const user = await this.userService.update(id, dto);
+    return userMapper.toResponse(user);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    await this.usersService.delete(id);
+    await this.userService.delete(id);
   }
 }

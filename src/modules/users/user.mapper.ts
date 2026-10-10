@@ -10,7 +10,7 @@ type UserRecord = {
   readonly updatedAt: Date;
 };
 
-export const usersMapper = {
+export const userMapper = {
   toDomain(record: UserRecord): User {
     return {
       id: record.id,
