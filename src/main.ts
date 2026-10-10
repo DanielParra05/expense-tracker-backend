@@ -12,6 +12,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const configService = app.get<ConfigService<Config, true>>(ConfigService);
 
+  app.useLogger([...configService.get('app.logLevels', { infer: true })]);
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
