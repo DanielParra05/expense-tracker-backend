@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
 } from 'class-validator';
 import {
@@ -26,4 +27,8 @@ export class UpdateUserDto {
   @IsEmail()
   @MaxLength(USER_EMAIL_MAX_LENGTH)
   readonly email?: string;
+
+  @IsOptional()
+  @IsUUID()
+  readonly groupId?: string;
 }

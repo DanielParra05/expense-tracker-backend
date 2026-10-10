@@ -8,12 +8,18 @@ type UserRecord = {
   readonly email: string;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  readonly groupMembership: { readonly groupId: string } | null;
 };
 
 export const userMapper = {
   toDomain(record: UserRecord): User {
+    if (record.groupMembership === null) {
+      throw new Error(`User ${record.id} has no group membership`);
+    }
+
     return {
       id: record.id,
+      groupId: record.groupMembership.groupId,
       firstName: record.firstName,
       lastName: record.lastName,
       email: record.email,
@@ -25,6 +31,7 @@ export const userMapper = {
   toResponse(user: User): UserResponseDto {
     return {
       id: user.id,
+      groupId: user.groupId,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,

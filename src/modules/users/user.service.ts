@@ -1,26 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { GroupService } from '../groups/group.service';
 import { EmailAlreadyTakenError, UserNotFoundError } from './domain/errors';
 import type { User } from './domain/user';
 import type { CreateUserDto } from './dto/create-user.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
-import { UserRepository } from './user.repository';
+import { type CreateUserData, UserRepository } from './user.repository';
 
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
 
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly groupService: GroupService,
+  ) {}
 
   async create(dto: CreateUserDto): Promise<User> {
-    await this.assertEmailAvailable(dto.email);
-
-    const user = await this.userRepository.create({
+    const data = {
       firstName: dto.firstName,
       lastName: dto.lastName ?? null,
       email: dto.email,
-    });
+    };
 
-    this.logger.log({ msg: 'User created', userId: user.id });
+    const user =
+      dto.groupId === undefined
+        ? await this.createWithNewGroup(data)
+        : await this.createInGroup(data, dto.groupId);
+
+    this.logger.log({
+      msg: 'User created',
+      userId: user.id,
+      groupId: user.groupId,
+    });
     return user;
   }
 
@@ -38,18 +49,28 @@ export class UserService {
 
   async update(id: string, dto: UpdateUserDto): Promise<User> {
     const existing = await this.findById(id);
+    const isChangingEmail =
+      dto.email !== undefined && dto.email !== existing.email;
+    const newGroupId =
+      dto.groupId === existing.groupId ? undefined : dto.groupId;
 
-    if (dto.email !== undefined && dto.email !== existing.email) {
-      await this.assertEmailAvailable(dto.email);
-    }
+    await Promise.all([
+      isChangingEmail && this.assertEmailAvailable(dto.email),
+      newGroupId !== undefined && this.groupService.assertExists(newGroupId),
+    ]);
 
     const user = await this.userRepository.update(id, {
       firstName: dto.firstName,
       lastName: dto.lastName,
       email: dto.email,
+      groupId: newGroupId,
     });
 
-    this.logger.log({ msg: 'User updated', userId: user.id });
+    this.logger.log({
+      msg: 'User updated',
+      userId: user.id,
+      groupId: user.groupId,
+    });
     return user;
   }
 
@@ -60,10 +81,26 @@ export class UserService {
     this.logger.log({ msg: 'User deleted', userId: id });
   }
 
+  private async createWithNewGroup(data: CreateUserData): Promise<User> {
+    await this.assertEmailAvailable(data.email);
+    return this.userRepository.createWithNewGroup(data);
+  }
+
+  private async createInGroup(
+    data: CreateUserData,
+    groupId: string,
+  ): Promise<User> {
+    await Promise.all([
+      this.assertEmailAvailable(data.email),
+      this.groupService.assertExists(groupId),
+    ]);
+    return this.userRepository.createInGroup(data, groupId);
+  }
+
   // Racy alone; the unique index plus the P2002 mapping is what closes the window.
   private async assertEmailAvailable(email: string): Promise<void> {
-    const existing = await this.userRepository.findByEmail(email);
-    if (existing !== null) {
+    const isTaken = await this.userRepository.existsByEmail(email);
+    if (isTaken) {
       throw new EmailAlreadyTakenError(email);
     }
   }

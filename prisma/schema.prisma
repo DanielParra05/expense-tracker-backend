@@ -21,7 +21,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  groupMemberships GroupMember[]
+  groupMembership GroupMember?
 
   @@map("users")
 }
@@ -41,14 +41,13 @@ model Group {
 
 model GroupMember {
   groupId  String   @map("group_id") @db.Uuid
-  userId   String   @map("user_id") @db.Uuid
+  userId   String   @unique @map("user_id") @db.Uuid
   joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
 
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([groupId, userId])
-  @@index([userId])
   @@map("groups_members")
 }
 
