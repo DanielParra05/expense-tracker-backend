@@ -9,7 +9,13 @@ export type DatabaseConfig = {
   readonly url: string;
 };
 
+export type AuthConfig = {
+  readonly jwtSecret: string;
+  readonly jwtExpiresInSeconds: number;
+};
+
 export type Config = {
   readonly app: AppConfig;
   readonly database: DatabaseConfig;
+  readonly auth: AuthConfig;
 };

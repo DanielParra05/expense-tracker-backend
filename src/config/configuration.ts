@@ -13,6 +13,10 @@ export function configuration(): Config {
     database: {
       url: env.DATABASE_URL,
     },
+    auth: {
+      jwtSecret: env.JWT_SECRET,
+      jwtExpiresInSeconds: env.JWT_EXPIRES_IN_SECONDS
+    }
   };
 }
 
