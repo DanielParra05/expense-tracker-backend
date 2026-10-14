@@ -1,23 +1,13 @@
 import { LOG_LEVELS, type LogLevel } from '@nestjs/common';
-
-export type Env = {
-  readonly APP_PORT: number;
-  readonly DATABASE_URL: string;
-  readonly LOG_LEVEL: LogLevel;
-  readonly JWT_SECRET: string;
-  readonly JWT_EXPIRES_IN_SECONDS: number;
-};
-
-const DEFAULT_APP_PORT = 3000;
-const MIN_JWT_SECRET_LENGTH = 32;
-const DEFAULT_LOG_LEVEL: LogLevel = 'log';
-const MIN_PORT = 1;
-const MAX_PORT = 65535;
-const POSTGRES_PROTOCOLS = ['postgres:', 'postgresql:'] as const;
-
-type ParseSuccess<T> = { readonly ok: true; readonly value: T };
-type ParseFailure = { readonly ok: false; readonly error: string };
-type ParseResult<T> = ParseSuccess<T> | ParseFailure;
+import {
+  DEFAULT_APP_PORT,
+  DEFAULT_LOG_LEVEL,
+  MAX_PORT,
+  MIN_JWT_SECRET_LENGTH,
+  MIN_PORT,
+  POSTGRES_PROTOCOLS,
+} from './config.constants';
+import type { Env, ParseFailure, ParseResult } from './config.types';
 
 export function validateEnv(raw: Record<string, unknown>): Env {
   const appPort = parseAppPort(raw.APP_PORT);
@@ -26,7 +16,13 @@ export function validateEnv(raw: Record<string, unknown>): Env {
   const jwtSecret = parseJwtSecret(raw.JWT_SECRET);
   const jwtExpiresInSecs = parseJwtExpiresIn(raw.JWT_EXPIRES_IN_SECONDS);
 
-  if (!appPort.ok || !databaseUrl.ok || !logLevel.ok || !jwtSecret.ok || !jwtExpiresInSecs.ok) {
+  if (
+    !appPort.ok ||
+    !databaseUrl.ok ||
+    !logLevel.ok ||
+    !jwtSecret.ok ||
+    !jwtExpiresInSecs.ok
+  ) {
     const errors = [appPort, databaseUrl, logLevel, jwtSecret, jwtExpiresInSecs]
       .filter((result): result is ParseFailure => !result.ok)
       .map((failure) => failure.error);
@@ -41,7 +37,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     DATABASE_URL: databaseUrl.value,
     LOG_LEVEL: logLevel.value,
     JWT_SECRET: jwtSecret.value,
-    JWT_EXPIRES_IN_SECONDS: jwtExpiresInSecs.value
+    JWT_EXPIRES_IN_SECONDS: jwtExpiresInSecs.value,
   };
 }
 
@@ -127,7 +123,10 @@ function parseJwtSecret(raw: unknown): ParseResult<string> {
 function parseJwtExpiresIn(raw: unknown): ParseResult<number> {
   const seconds = Number(raw);
   if (isEmpty(raw) || !Number.isInteger(seconds) || seconds <= 0) {
-    return { ok: false, error: 'JWT_EXPIRES_IN_SECONDS must be a positive integer' };
+    return {
+      ok: false,
+      error: 'JWT_EXPIRES_IN_SECONDS must be a positive integer',
+    };
   }
 
   return { ok: true, value: seconds };
@@ -135,4 +134,4 @@ function parseJwtExpiresIn(raw: unknown): ParseResult<number> {
 
 function isEmpty(raw: unknown) {
   return raw === undefined || raw === '';
-} 
+}

@@ -15,8 +15,8 @@ export function configuration(): Config {
     },
     auth: {
       jwtSecret: env.JWT_SECRET,
-      jwtExpiresInSeconds: env.JWT_EXPIRES_IN_SECONDS
-    }
+      jwtExpiresInSeconds: env.JWT_EXPIRES_IN_SECONDS,
+    },
   };
 }
 
