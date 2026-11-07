@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { GroupNotFoundError } from './domain/errors';
-import { GroupRepository } from './group.repository';
+import { GroupsRepository } from './groups.repository';
 
 @Injectable()
-export class GroupService {
-  constructor(private readonly groupRepository: GroupRepository) {}
+export class GroupsService {
+  constructor(private readonly groupsRepository: GroupsRepository) {}
 
   async assertExists(id: string): Promise<void> {
-    const doesExist = await this.groupRepository.exists(id);
+    const doesExist = await this.groupsRepository.exists(id);
     if (!doesExist) {
       throw new GroupNotFoundError(id);
     }

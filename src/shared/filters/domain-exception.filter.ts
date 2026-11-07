@@ -11,6 +11,7 @@ import { NotFoundError } from '../errors/not-found.error';
 import { RequestValidationError } from '../errors/request-validation.error';
 import { ValidationError } from '../errors/validation.error';
 import { sendError } from './send-error';
+import { UnauthorizedError } from '../errors/unauthorized.error';
 
 @Catch(DomainError)
 export class DomainExceptionFilter implements ExceptionFilter<DomainError> {
@@ -42,5 +43,9 @@ function toStatus(error: DomainError): HttpStatus {
   if (error instanceof ValidationError) {
     return HttpStatus.BAD_REQUEST;
   }
+  if (error instanceof UnauthorizedError) {
+    return HttpStatus.UNAUTHORIZED;
+  }
+
   return HttpStatus.INTERNAL_SERVER_ERROR;
 }

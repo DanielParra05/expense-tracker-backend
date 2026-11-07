@@ -1,33 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import type { NewUser } from './domain/new-user';
+import type { PasswordCredentials } from './domain/password-credentials';
 import type { User } from './domain/user';
-import { userMapper } from './user.mapper';
+import type { UserChanges } from './domain/user-changes';
+import { userMapper } from './users.mapper';
 
-export type CreateUserData = {
-  readonly firstName: string;
-  readonly lastName: string | null;
-  readonly email: string;
-};
-
-export type UpdateUserData = {
-  readonly firstName?: string;
-  readonly lastName?: string | null;
-  readonly email?: string;
-  readonly groupId?: string;
-};
-
-type UserFields = Omit<UpdateUserData, 'groupId'>;
+type NewUserFields = Omit<NewUser, 'groupId'>;
+type UserFields = Omit<UserChanges, 'groupId'>;
 
 const WITH_GROUP_ID = {
   groupMembership: { select: { groupId: true } },
 } satisfies Prisma.UserInclude;
 
 @Injectable()
-export class UserRepository {
+export class UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createWithNewGroup(data: CreateUserData): Promise<User> {
+  async createWithNewGroup(data: NewUserFields): Promise<User> {
     const record = await this.prisma.user.create({
       data: {
         ...data,
@@ -38,7 +29,7 @@ export class UserRepository {
     return userMapper.toDomain(record);
   }
 
-  async createInGroup(data: CreateUserData, groupId: string): Promise<User> {
+  async createInGroup(data: NewUserFields, groupId: string): Promise<User> {
     const record = await this.prisma.user.create({
       data: {
         ...data,
@@ -70,7 +61,7 @@ export class UserRepository {
     return count > 0;
   }
 
-  async update(id: string, data: UpdateUserData): Promise<User> {
+  async update(id: string, data: UserChanges): Promise<User> {
     const { groupId, ...fields } = data;
     if (groupId !== undefined) {
       return this.updateAndMoveToGroup(id, fields, groupId);
@@ -115,6 +106,19 @@ export class UserRepository {
       await deleteGroupIfEmpty(tx, previousMembership.groupId);
       return userMapper.toDomain(record);
     });
+  }
+
+  async findPasswordCredentials(
+    email: string,
+  ): Promise<PasswordCredentials | null> {
+    const record = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, passwordHash: true },
+    });
+    if (record === null || record.passwordHash === null) {
+      return null;
+    }
+    return { userId: record.id, passwordHash: record.passwordHash };
   }
 }
 

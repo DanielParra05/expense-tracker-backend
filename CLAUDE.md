@@ -60,13 +60,15 @@ src/
         └── expenses.module.ts
 ```
 
-### Three rules to keep it clean
+### Rules to keep it clean
 
-Everything starts just being a service like 'user'. Once it grows we can layer it as a use-case, but starting it should always be a service. Prisma appears in exactly one file per module — users.repository.ts. If @prisma/client shows up in a use case, the layer has leaked. 
+Everything starts just being a service like 'user'. Once it grows we can layer it as a use-case, but starting it should always be a service. Prisma appears in exactly one file per module — users.repository.ts. If `@prisma/client` or the generated client (`generated/prisma`) shows up in a service or use case, the layer has leaked.
 
 The repository returns User, never Prisma.User. That's what users.mapper.ts is for. Even at five lines it earns its place — it's where passwordHash gets dropped and where Decimal becomes integer cents in the expenses module.
 
-Controllers inject services or use cases, never repositories. A controller reaching for UserRepository is the shortcut that quietly collapses the whole structure.
+Controllers inject services or use cases, never repositories. A controller reaching for UsersRepository is the shortcut that quietly collapses the whole structure.
+
+Services accept domain types, never DTOs. DTOs are the HTTP contract and stop at the controller: it converts DTO → domain input through the module's mapper (`userMapper.fromCreateDto`) before calling the service. DTOs appear only in the controller and the mapper; if a service or repository imports from `dto/`, the layer has leaked. Input shapes (`NewUser`, `UserChanges`) live in `domain/`, never in the repository.
 
 Repository lookups return `null` when a record doesn't exist; absence isn't a failure at that layer. The service decides whether it is and throws the domain error (`UserNotFoundError`).
 
@@ -97,7 +99,10 @@ Follow them when writing or modifying code. If a rule conflicts with existing co
 - No abbreviations beyond well-known ones (`id`, `url`, `dto`). No Hungarian prefixes,
   no `I` prefix on interfaces.
 - Files: `kebab-case` with the NestJS suffix convention —
-  `user.service.ts`, `create-user.dto.ts`, `auth.guard.ts`, `user.repository.ts`.
+  `users.service.ts`, `create-user.dto.ts`, `auth.guard.ts`, `users.repository.ts`.
+- Module artifacts are plural, as in the NestJS docs: `users.service.ts` → `UsersService`,
+  injected as `usersService`. Domain types, errors and DTOs describe one thing and stay
+  singular: `User`, `UserNotFoundError`, `CreateUserDto`.
 
 ### Functions
 
@@ -125,14 +130,14 @@ Follow them when writing or modifying code. If a rule conflicts with existing co
   is a stable `UPPER_SNAKE_CASE` identifier the frontend maps to user-facing copy; `message`
   is a developer aid and is never rendered to users.
 - Error codes belong to the module that owns them: an `as const` object plus a same-named
-  derived type in that module's `domain/errors.ts`, prefixed with the module name
-  (`USER_NOT_FOUND`). Annotate each error class's `code` with that type — without the
+  derived type in that module's `domain/errors.ts`, prefixed with the singular entity name
+  (`USER_NOT_FOUND`, not `USERS_NOT_FOUND`). Annotate each error class's `code` with that type — without the
   annotation a typo compiles. Only codes belonging to no module live in
   `shared/errors/shared-error-code.ts`.
 - `shared/` never imports from `modules/`. There is deliberately no central union of every
   error code: a single response shape, not a single type, is what the frontend contract needs.
 - `DomainExceptionFilter` maps to HTTP status by base class (`NotFoundError`→404,
-  `ConflictError`→409, `ValidationError`→400), never by code. Adding a module code must never
+  `ConflictError`→409, `ValidationError`→400, `UnauthorizedError`→401), never by code. Adding a module code must never
   require editing a filter.
 - Exception filters serialize through `sendError` and never call `response.json()` directly,
   so every error body is typed `ErrorResponse`. Logging stays each filter's own decision —
@@ -152,7 +157,8 @@ Follow them when writing or modifying code. If a rule conflicts with existing co
   `process.env` is read in exactly one place.
 - No magic numbers or strings in logic — named constants, or config if environment-varying.
 - Use the Nest `Logger` (or the configured structured logger). Never `console.log`.
-- Log context and correlation IDs; never log credentials, tokens, or PII.
+- Log context (entity IDs) and, once request-scoped correlation IDs exist, include them;
+  never log credentials, tokens, or PII.
 
 Example:
 

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 
 @Injectable()
-export class GroupRepository {
+export class GroupsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async exists(id: string): Promise<boolean> {

@@ -13,23 +13,23 @@ import {
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import type { UserResponseDto } from './dto/user-response.dto';
-import { userMapper } from './user.mapper';
-import { UserService } from './user.service';
+import { userMapper } from './users.mapper';
+import { UsersService } from './users.service';
 
 @Controller('users')
-export class UserController {
-  constructor(private readonly userService: UserService) {}
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateUserDto): Promise<UserResponseDto> {
-    const user = await this.userService.create(dto);
+    const user = await this.usersService.create(userMapper.fromCreateDto(dto));
     return userMapper.toResponse(user);
   }
 
   @Get()
   async findAll(): Promise<UserResponseDto[]> {
-    const users = await this.userService.findAll();
+    const users = await this.usersService.findAll();
     return users.map((user) => userMapper.toResponse(user));
   }
 
@@ -37,7 +37,7 @@ export class UserController {
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<UserResponseDto> {
-    const user = await this.userService.findById(id);
+    const user = await this.usersService.findById(id);
     return userMapper.toResponse(user);
   }
 
@@ -46,13 +46,16 @@ export class UserController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    const user = await this.userService.update(id, dto);
+    const user = await this.usersService.update(
+      id,
+      userMapper.fromUpdateDto(dto),
+    );
     return userMapper.toResponse(user);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    await this.userService.delete(id);
+    await this.usersService.delete(id);
   }
 }

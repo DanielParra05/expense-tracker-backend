@@ -1,4 +1,8 @@
+import type { NewUser } from './domain/new-user';
 import type { User } from './domain/user';
+import type { UserChanges } from './domain/user-changes';
+import type { CreateUserDto } from './dto/create-user.dto';
+import type { UpdateUserDto } from './dto/update-user.dto';
 import type { UserResponseDto } from './dto/user-response.dto';
 
 type UserRecord = {
@@ -37,6 +41,25 @@ export const userMapper = {
       email: user.email,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
+    };
+  },
+
+  fromCreateDto(dto: CreateUserDto): NewUser {
+    return {
+      firstName: dto.firstName,
+      lastName: dto.lastName ?? null,
+      email: dto.email,
+      passwordHash: null,
+      groupId: dto.groupId,
+    };
+  },
+
+  fromUpdateDto(dto: UpdateUserDto): UserChanges {
+    return {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      groupId: dto.groupId,
     };
   },
 };
