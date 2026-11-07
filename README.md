@@ -1,98 +1,118 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Expense Tracker — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+REST API for a shared expense tracker. Users belong to a group, and a group's members share its expenses, incomes and categories.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Built with **NestJS 11**, **Prisma 7** (with the `pg` driver adapter) and **PostgreSQL 17**.
 
-## Description
+## Requirements
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Node.js 20+
+- Yarn
+- Docker, for the local database
 
-## Project setup
+## Getting started
 
 ```bash
-$ yarn install
+# 1. Install dependencies (also runs `prisma generate`)
+yarn install
+
+# 2. Configure the environment
+cp .env.example .env
+# then set JWT_SECRET to a random value: openssl rand -base64 48
+
+# 3. Start PostgreSQL
+docker compose up -d
+
+# 4. Apply migrations
+yarn db:migrate
+
+# 5. Run the API in watch mode
+yarn start:dev
 ```
 
-## Compile and run the project
+The API listens on `APP_PORT` (default `3000`).
 
-```bash
-# development
-$ yarn run start
+## Environment variables
 
-# watch mode
-$ yarn run start:dev
+All variables are validated at startup. The app refuses to boot and lists every problem it finds.
 
-# production mode
-$ yarn run start:prod
+| Variable                 | Required | Description                                                         |
+| ------------------------ | -------- | ------------------------------------------------------------------- |
+| `DATABASE_URL`           | yes      | `postgres://` or `postgresql://` connection string                  |
+| `JWT_SECRET`             | yes      | At least 32 characters; use a different value per environment       |
+| `JWT_EXPIRES_IN_SECONDS` | yes      | Access-token lifetime, a positive integer (e.g. `900`)              |
+| `APP_PORT`               | no       | HTTP port, `1`–`65535`; defaults to `3000`                          |
+| `LOG_LEVEL`              | no       | `verbose`, `debug`, `log`, `warn`, `error` or `fatal`; defaults to `log` |
+
+Never commit `.env`.
+
+## Scripts
+
+| Command             | What it does                                     |
+| ------------------- | ------------------------------------------------ |
+| `yarn start:dev`    | Run in watch mode                                |
+| `yarn start:debug`  | Run in watch mode with the debugger attached     |
+| `yarn build`        | Compile to `dist/`                               |
+| `yarn start:prod`   | Run the compiled build                           |
+| `yarn lint`         | ESLint, with autofix                             |
+| `yarn format`       | Prettier                                         |
+| `yarn test`         | Unit tests (Jest)                                |
+| `yarn test:e2e`     | End-to-end tests                                 |
+| `yarn db:migrate`   | Create and apply a migration in development      |
+| `yarn db:deploy`    | Apply pending migrations (CI / production)       |
+| `yarn db:studio`    | Open Prisma Studio                               |
+
+## Project structure
+
+```text
+src/
+├── main.ts            # bootstrap: logger, global ValidationPipe and exception filters
+├── app.module.ts
+├── config/            # typed configuration and env validation
+├── shared/
+│   ├── prisma/        # PrismaService (global)
+│   ├── errors/        # DomainError base classes and shared error codes
+│   ├── filters/       # map exceptions to { code, message } responses
+│   └── validation/    # class-validator errors → field error codes
+├── generated/prisma/  # Prisma client (generated, not edited)
+└── modules/
+    ├── users/         # controller → service → repository, with domain/ and dto/
+    ├── groups/
+    ├── auth/          # in progress
+    └── expenses/      # in progress
 ```
 
-## Run tests
+Each module follows the same layering:
 
-```bash
-# unit tests
-$ yarn run test
+- **Controllers** handle HTTP. They map DTOs to domain types through the module's mapper and call services, never repositories.
+- **Services** hold the business rules. They accept and return domain types, and they throw domain errors instead of `HttpException`.
+- **Repositories** are the only place Prisma is used. They return domain objects, never Prisma models.
 
-# e2e tests
-$ yarn run test:e2e
+The full set of conventions lives in [CLAUDE.md](CLAUDE.md).
 
-# test coverage
-$ yarn run test:cov
+## Error responses
+
+Every error has the same shape. The HTTP status line carries the status:
+
+```json
+{ "code": "USER_NOT_FOUND", "message": "User 6f1c… was not found" }
 ```
 
-## Deployment
+Validation failures add a `fields` map:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ yarn install -g @nestjs/mau
-$ mau deploy
+```json
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Request validation failed",
+  "fields": { "email": "INVALID_EMAIL" }
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+`code` is a stable identifier that clients map to user-facing text. `message` is for developers only.
 
-## Resources
+## Authentication
 
-Check out a few resources that may come in handy when working with NestJS:
+JWT authentication is being implemented following [docs/jwt-authentication-guide.pdf](docs/jwt-authentication-guide.pdf). Once it's done:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- `POST /auth/register` and `POST /auth/login` are the only public routes.
+- Every other route requires an `Authorization: Bearer <token>` header.
