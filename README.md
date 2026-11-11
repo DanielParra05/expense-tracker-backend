@@ -78,7 +78,7 @@ src/
 └── modules/
     ├── users/         # controller → service → repository, with domain/ and dto/
     ├── groups/
-    ├── auth/          # in progress
+    ├── auth/          # register, login, JWT guard, @Public(), @CurrentUser()
     └── expenses/      # in progress
 ```
 
@@ -112,7 +112,29 @@ Validation failures add a `fields` map:
 
 ## Authentication
 
-JWT authentication is being implemented following [docs/jwt-authentication-guide.pdf](docs/jwt-authentication-guide.pdf). Once it's done:
+Every route requires an `Authorization: Bearer <token>` header except `POST /auth/register` and `POST /auth/login`. Both of those return a session:
 
-- `POST /auth/register` and `POST /auth/login` are the only public routes.
-- Every other route requires an `Authorization: Bearer <token>` header.
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "tokenType": "Bearer",
+  "expiresIn": 900,
+  "user": { "id": "…", "groupId": "…", "firstName": "Ana", "lastName": null, "email": "…" }
+}
+```
+
+- Access tokens last `JWT_EXPIRES_IN_SECONDS` and carry only the user id. The user is reloaded on every request, so a deleted user's token stops working right away.
+- The auth endpoints are rate-limited to 10 requests per minute per IP (`429 TOO_MANY_REQUESTS`).
+- Design and rationale: [docs/jwt-authentication-guide.pdf](docs/jwt-authentication-guide.pdf).
+
+## Endpoints
+
+| Method   | Path             | Auth   | Description                                        |
+| -------- | ---------------- | ------ | -------------------------------------------------- |
+| `POST`   | `/auth/register` | public | Create an account (and a new group, or join `groupId`) |
+| `POST`   | `/auth/login`    | public | Exchange email + password for a session            |
+| `GET`    | `/users/me`      | token  | The current user                                   |
+| `PATCH`  | `/users/me`      | token  | Update profile or move to another group            |
+| `DELETE` | `/users/me`      | token  | Delete the current user                            |
+
+Auth errors: `AUTH_INVALID_CREDENTIALS`, `AUTH_TOKEN_MISSING`, `AUTH_TOKEN_INVALID` (all `401`).

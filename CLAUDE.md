@@ -31,21 +31,31 @@ src/
     │
     ├── users/                            # ── DEFAULT: one service ──
     │   ├── domain/
-    │   │   ├── user.ts
+    │   │   ├── users.types.ts            # User, NewUser, UserChanges, PasswordCredentials
     │   │   └── errors.ts                 # UserNotFoundError, EmailAlreadyTakenError
     │   ├── dto/
-    │   │   ├── create-user.dto.ts
     │   │   ├── update-user.dto.ts
     │   │   └── user-response.dto.ts
     │   ├── users.controller.ts
     │   ├── users.service.ts              # throws domain errors, never HttpException
     │   ├── users.repository.ts
+    │   ├── users.records.ts              # UserRecord: persistence shape, mapper + repository only
     │   ├── users.mapper.ts
     │   └── users.module.ts
     │
+    ├── auth/                             # ── SEVERAL SERVICES: services/ folder ──
+    │   ├── services/
+    │   │   ├── auth.service.ts
+    │   │   ├── password-hasher.service.ts
+    │   │   └── access-token-signer.service.ts
+    │   ├── domain/  dto/  decorators/  guards/
+    │   ├── auth.controller.ts
+    │   ├── auth.mapper.ts
+    │   └── auth.module.ts
+    │
     └── expenses/                         # ── EXAMPLE ONLY: promoted shape ──
         ├── domain/
-        │   ├── expense.ts
+        │   ├── expenses.types.ts
         │   └── errors.ts
         ├── application/
         │   └── create-expense.use-case.ts
@@ -56,19 +66,37 @@ src/
         ├── expenses.controller.ts
         ├── expenses.service.ts
         ├── expenses.repository.ts
+        ├── expenses.records.ts           # ExpenseRecord with Decimal; the mapper turns it into integer cents
         ├── expenses.mapper.ts
         └── expenses.module.ts
 ```
 
 ### Rules to keep it clean
 
-Everything starts just being a service like 'user'. Once it grows we can layer it as a use-case, but starting it should always be a service. Prisma appears in exactly one file per module — users.repository.ts. If `@prisma/client` or the generated client (`generated/prisma`) shows up in a service or use case, the layer has leaked.
+Everything starts just being a service like 'user'. Once it grows we can layer it as a use-case, but starting it should always be a service.
+
+A module may have more than one service when it has distinct responsibilities (e.g. auth: orchestration, password hashing, token signing). With one service it lives at the module root; with two or more, all of them move to `<module>/services/`. Splitting services is not the same as promoting to use cases: services stay injectable classes with a `.service.ts` suffix.
+
+Prisma appears in exactly one file per module — users.repository.ts. If `@prisma/client` or the generated client (`generated/prisma`) shows up in a service or use case, the layer has leaked.
 
 The repository returns User, never Prisma.User. That's what users.mapper.ts is for. Even at five lines it earns its place — it's where passwordHash gets dropped and where Decimal becomes integer cents in the expenses module.
 
 Controllers inject services or use cases, never repositories. A controller reaching for UsersRepository is the shortcut that quietly collapses the whole structure.
 
-Services accept domain types, never DTOs. DTOs are the HTTP contract and stop at the controller: it converts DTO → domain input through the module's mapper (`userMapper.fromCreateDto`) before calling the service. DTOs appear only in the controller and the mapper; if a service or repository imports from `dto/`, the layer has leaked. Input shapes (`NewUser`, `UserChanges`) live in `domain/`, never in the repository.
+Services accept domain types, never DTOs. DTOs are the HTTP contract and stop at the controller: it converts DTO → domain input through the module's mapper (`authMapper.fromRegisterDto`) before calling the service. DTOs appear only in the controller and the mapper; if a service or repository imports from `dto/`, the layer has leaked. Input shapes (`NewUser`, `UserChanges`, `Registration`) live in `domain/`, never in the repository.
+
+Types never live in the file that uses them. Every `type`/`interface` goes in a file whose job is to hold types, chosen by layer:
+
+- `domain/<module>.types.ts`: domain types and their helpers (`User`, `NewUser`, `NewUserFields`). At most one per module.
+- `<module>.records.ts`: persistence shapes as Prisma returns them (`UserRecord`). Only the mapper and the repository import it; anywhere else, persistence has leaked.
+- `dto/*.dto.ts`: HTTP shapes, one DTO per file.
+- `shared/`: a type used across modules and naming no entity gets its own file next to the code that uses it (`error-response.ts`), or `shared/types/` when it's generic (`Paginated<T>`).
+
+Exception: error codes stay in `domain/errors.ts` (or `shared-error-code.ts`) as an `as const` object plus a same-named type. The pair is one unit, so it isn't split.
+
+Exporting a type doesn't make it public. Other modules use only the types a service accepts or returns; a module reaching for another module's helper or record types is reaching into its internals.
+
+Every route requires a token (global `JwtAuthGuard`); public routes opt out with `@Public()`. Controllers read the caller with `@CurrentUser()`, never from the body.
 
 Repository lookups return `null` when a record doesn't exist; absence isn't a failure at that layer. The service decides whether it is and throws the domain error (`UserNotFoundError`).
 
