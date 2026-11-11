@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import type { NewUser } from './domain/new-user';
-import type { PasswordCredentials } from './domain/password-credentials';
-import type { User } from './domain/user';
-import type { UserChanges } from './domain/user-changes';
+import type {
+  NewUserFields,
+  PasswordCredentials,
+  User,
+  UserChanges,
+  UserFields,
+} from './domain/users.types';
 import { userMapper } from './users.mapper';
-
-type NewUserFields = Omit<NewUser, 'groupId'>;
-type UserFields = Omit<UserChanges, 'groupId'>;
 
 const WITH_GROUP_ID = {
   groupMembership: { select: { groupId: true } },
@@ -38,14 +38,6 @@ export class UsersRepository {
       include: WITH_GROUP_ID,
     });
     return userMapper.toDomain(record);
-  }
-
-  async findAll(): Promise<User[]> {
-    const records = await this.prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: WITH_GROUP_ID,
-    });
-    return records.map((record) => userMapper.toDomain(record));
   }
 
   async findById(id: string): Promise<User | null> {

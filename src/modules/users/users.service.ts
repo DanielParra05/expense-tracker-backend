@@ -1,13 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GroupsService } from '../groups/groups.service';
 import { EmailAlreadyTakenError, UserNotFoundError } from './domain/errors';
-import type { NewUser } from './domain/new-user';
-import type { PasswordCredentials } from './domain/password-credentials';
-import type { User } from './domain/user';
-import type { UserChanges } from './domain/user-changes';
+import type {
+  NewUser,
+  NewUserFields,
+  PasswordCredentials,
+  User,
+  UserChanges,
+} from './domain/users.types';
 import { UsersRepository } from './users.repository';
-
-type NewUserFields = Omit<NewUser, 'groupId'>;
 
 @Injectable()
 export class UsersService {
@@ -34,10 +35,6 @@ export class UsersService {
     return user;
   }
 
-  findAll(): Promise<User[]> {
-    return this.usersRepository.findAll();
-  }
-
   async findById(id: string): Promise<User> {
     const user = await this.usersRepository.findById(id);
     if (user === null) {
@@ -46,6 +43,8 @@ export class UsersService {
     return user;
   }
 
+  // Returns null instead of throwing: login must not reveal whether the email exists,
+  // so the caller turns "no user", "no password" and "wrong password" into one error.
   findPasswordCredentials(email: string): Promise<PasswordCredentials | null> {
     return this.usersRepository.findPasswordCredentials(email);
   }

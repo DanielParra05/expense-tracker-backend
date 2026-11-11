@@ -5,57 +5,39 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Param,
-  ParseUUIDPipe,
   Patch,
-  Post,
 } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { User } from './domain/users.types';
 import { UpdateUserDto } from './dto/update-user.dto';
 import type { UserResponseDto } from './dto/user-response.dto';
 import { userMapper } from './users.mapper';
 import { UsersService } from './users.service';
 
-@Controller('users')
+@Controller('users/me')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateUserDto): Promise<UserResponseDto> {
-    const user = await this.usersService.create(userMapper.fromCreateDto(dto));
-    return userMapper.toResponse(user);
-  }
-
   @Get()
-  async findAll(): Promise<UserResponseDto[]> {
-    const users = await this.usersService.findAll();
-    return users.map((user) => userMapper.toResponse(user));
-  }
-
-  @Get(':id')
-  async findById(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<UserResponseDto> {
-    const user = await this.usersService.findById(id);
+  findMe(@CurrentUser() user: User): UserResponseDto {
     return userMapper.toResponse(user);
   }
 
-  @Patch(':id')
-  async update(
-    @Param('id', ParseUUIDPipe) id: string,
+  @Patch()
+  async updateMe(
+    @CurrentUser() user: User,
     @Body() dto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    const user = await this.usersService.update(
-      id,
+    const updatedUser = await this.usersService.update(
+      user.id,
       userMapper.fromUpdateDto(dto),
     );
-    return userMapper.toResponse(user);
+    return userMapper.toResponse(updatedUser);
   }
 
-  @Delete(':id')
+  @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    await this.usersService.delete(id);
+  async deleteMe(@CurrentUser() user: User): Promise<void> {
+    await this.usersService.delete(user.id);
   }
 }

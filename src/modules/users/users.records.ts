@@ -1,9 +1,9 @@
-export type User = {
+export type UserRecord = {
   readonly id: string;
-  readonly groupId: string;
   readonly firstName: string;
   readonly lastName: string | null;
   readonly email: string;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  readonly groupMembership: { readonly groupId: string } | null;
 };

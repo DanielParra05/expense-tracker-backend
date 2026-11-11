@@ -1,19 +1,7 @@
-import type { NewUser } from './domain/new-user';
-import type { User } from './domain/user';
-import type { UserChanges } from './domain/user-changes';
-import type { CreateUserDto } from './dto/create-user.dto';
+import type { User, UserChanges } from './domain/users.types';
 import type { UpdateUserDto } from './dto/update-user.dto';
 import type { UserResponseDto } from './dto/user-response.dto';
-
-type UserRecord = {
-  readonly id: string;
-  readonly firstName: string;
-  readonly lastName: string | null;
-  readonly email: string;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
-  readonly groupMembership: { readonly groupId: string } | null;
-};
+import type { UserRecord } from './users.records';
 
 export const userMapper = {
   toDomain(record: UserRecord): User {
@@ -41,16 +29,6 @@ export const userMapper = {
       email: user.email,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
-    };
-  },
-
-  fromCreateDto(dto: CreateUserDto): NewUser {
-    return {
-      firstName: dto.firstName,
-      lastName: dto.lastName ?? null,
-      email: dto.email,
-      passwordHash: null,
-      groupId: dto.groupId,
     };
   },
 
