@@ -7,17 +7,12 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { SharedErrorCode } from '../errors/shared-error-code';
-import type { ErrorResponse } from './error-response';
+import type { ClientFacingError } from './error-response';
 import { sendError } from './send-error';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 const RECORD_NOT_FOUND = 'P2025';
 const FOREIGN_KEY_VIOLATION = 'P2003';
-
-type ClientFacingError = {
-  readonly status: HttpStatus;
-  readonly body: ErrorResponse;
-};
 
 @Catch(Prisma.PrismaClientKnownRequestError)
 export class PrismaExceptionFilter implements ExceptionFilter<Prisma.PrismaClientKnownRequestError> {

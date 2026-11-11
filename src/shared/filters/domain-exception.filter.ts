@@ -9,9 +9,9 @@ import { ConflictError } from '../errors/conflict.error';
 import { DomainError } from '../errors/domain.error';
 import { NotFoundError } from '../errors/not-found.error';
 import { RequestValidationError } from '../errors/request-validation.error';
+import { UnauthorizedError } from '../errors/unauthorized.error';
 import { ValidationError } from '../errors/validation.error';
 import { sendError } from './send-error';
-import { UnauthorizedError } from '../errors/unauthorized.error';
 
 @Catch(DomainError)
 export class DomainExceptionFilter implements ExceptionFilter<DomainError> {
