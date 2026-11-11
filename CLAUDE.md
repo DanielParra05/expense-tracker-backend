@@ -73,7 +73,14 @@ Services accept domain types, never DTOs. DTOs are the HTTP contract and stop at
 Repository lookups return `null` when a record doesn't exist; absence isn't a failure at that layer. The service decides whether it is and throws the domain error (`UserNotFoundError`).
 
 ##  Rules for code
-Follow them when writing or modifying code. If a rule conflicts with existing code in a file, match the file's conventions and mention the inconsistency rather than silently reformatting.
+Follow them when writing or modifying code. If a rule conflicts with existing code, fix it in the lines you're changing (Scout rule); outside them, match the file's conventions and mention the inconsistency.
+
+### Scout rule
+
+- Leave every file you touch a little cleaner than you found it: fix naming, dead code
+  or a rule violation **in the code you're already changing**.
+- Keep it scoped: no unrelated reformatting or drive-by refactors in other files.
+  Larger cleanups you notice go in a separate change, or get reported instead.
 
 ### TypeScript
 
@@ -103,6 +110,19 @@ Follow them when writing or modifying code. If a rule conflicts with existing co
 - Module artifacts are plural, as in the NestJS docs: `users.service.ts` → `UsersService`,
   injected as `usersService`. Domain types, errors and DTOs describe one thing and stay
   singular: `User`, `UserNotFoundError`, `CreateUserDto`.
+
+### Design principles
+
+- One reason to change per class: controllers handle HTTP, services hold rules,
+  repositories hold persistence, mappers translate shapes.
+- Extend by adding, not editing: new error codes, routes or providers must not require
+  changes to shared code (filters, guards, base classes).
+- Narrow contracts: return the smallest type a caller needs (`PasswordCredentials`,
+  not `User` + hash). Don't make callers depend on fields they don't use.
+- Wrap third-party libraries (argon2, JWT, HTTP clients) behind a small injectable of
+  our own, so the rest of the code never imports them directly and tests can replace them.
+- One source of truth: validation limits, codes and magic values live in one named
+  constant, not repeated.
 
 ### Functions
 
