@@ -1,6 +1,57 @@
-import type { ValidationError as ClassValidatorError } from 'class-validator';
+import {
+  IS_EMAIL,
+  IS_INT,
+  IS_ISO8601,
+  IS_NOT_EMPTY,
+  IS_NUMBER,
+  IS_STRING,
+  IS_UUID,
+  MATCHES,
+  MAX,
+  MAX_LENGTH,
+  MIN,
+  MIN_LENGTH,
+  type ValidationError as ClassValidatorError,
+} from 'class-validator';
 import { RequestValidationError } from '../errors/request-validation.error';
 import { FieldErrorCode } from '../errors/shared-error-code';
+
+const WHITELIST_CONSTRAINT = 'whitelistValidation';
+
+type ConstraintRule = {
+  readonly code: FieldErrorCode;
+  // Lower wins: a wrong type is reported before a wrong format, before a wrong range.
+  readonly priority: number;
+};
+
+const TYPE_PRIORITY = 0;
+const FORMAT_PRIORITY = 1;
+const LIMIT_PRIORITY = 2;
+const UNKNOWN_PRIORITY = 3;
+
+const CONSTRAINT_RULES: Readonly<Record<string, ConstraintRule>> = {
+  [IS_STRING]: { code: FieldErrorCode.INVALID_TYPE, priority: TYPE_PRIORITY },
+  [IS_INT]: { code: FieldErrorCode.INVALID_TYPE, priority: TYPE_PRIORITY },
+  [IS_NUMBER]: { code: FieldErrorCode.INVALID_TYPE, priority: TYPE_PRIORITY },
+  [IS_NOT_EMPTY]: { code: FieldErrorCode.REQUIRED, priority: FORMAT_PRIORITY },
+  [IS_EMAIL]: {
+    code: FieldErrorCode.INVALID_EMAIL,
+    priority: FORMAT_PRIORITY,
+  },
+  [IS_UUID]: { code: FieldErrorCode.INVALID_ID, priority: FORMAT_PRIORITY },
+  [IS_ISO8601]: {
+    code: FieldErrorCode.INVALID_FORMAT,
+    priority: FORMAT_PRIORITY,
+  },
+  [MATCHES]: {
+    code: FieldErrorCode.INVALID_FORMAT,
+    priority: FORMAT_PRIORITY,
+  },
+  [MIN]: { code: FieldErrorCode.OUT_OF_RANGE, priority: LIMIT_PRIORITY },
+  [MAX]: { code: FieldErrorCode.OUT_OF_RANGE, priority: LIMIT_PRIORITY },
+  [MIN_LENGTH]: { code: FieldErrorCode.TOO_SHORT, priority: LIMIT_PRIORITY },
+  [MAX_LENGTH]: { code: FieldErrorCode.TOO_LONG, priority: LIMIT_PRIORITY },
+};
 
 export function validationExceptionFactory(
   errors: ClassValidatorError[],
@@ -17,10 +68,10 @@ function toFieldCodes(
   for (const error of errors) {
     const path =
       parentPath === '' ? error.property : `${parentPath}.${error.property}`;
-    const constraint = firstConstraint(error);
+    const code = toFieldErrorCode(error);
 
-    if (constraint !== undefined) {
-      fields[path] = toFieldErrorCode(constraint);
+    if (code !== undefined) {
+      fields[path] = code;
     }
 
     if (error.children !== undefined && error.children.length > 0) {
@@ -31,28 +82,31 @@ function toFieldCodes(
   return fields;
 }
 
-function firstConstraint(error: ClassValidatorError): string | undefined {
-  if (error.constraints === undefined) {
+function toFieldErrorCode(
+  error: ClassValidatorError,
+): FieldErrorCode | undefined {
+  const constraintNames = Object.keys(error.constraints ?? {});
+  if (constraintNames.length === 0) {
     return undefined;
   }
-  return Object.keys(error.constraints)[0];
+  if (constraintNames.includes(WHITELIST_CONSTRAINT)) {
+    return FieldErrorCode.UNKNOWN_FIELD;
+  }
+  if (error.value === undefined || error.value === null) {
+    return FieldErrorCode.REQUIRED;
+  }
+
+  const [highestPriorityRule] = constraintNames
+    .map(toRule)
+    .sort((first, second) => first.priority - second.priority);
+  return highestPriorityRule.code;
 }
 
-function toFieldErrorCode(constraint: string): FieldErrorCode {
-  switch (constraint) {
-    case 'isNotEmpty':
-      return FieldErrorCode.REQUIRED;
-    case 'isEmail':
-      return FieldErrorCode.INVALID_EMAIL;
-    case 'isString':
-      return FieldErrorCode.INVALID_TYPE;
-    case 'maxLength':
-      return FieldErrorCode.TOO_LONG;
-    case 'minLength':
-      return FieldErrorCode.TOO_SHORT;
-    case 'whitelistValidation':
-      return FieldErrorCode.UNKNOWN_FIELD;
-    default:
-      return FieldErrorCode.INVALID;
-  }
+function toRule(constraintName: string): ConstraintRule {
+  return (
+    CONSTRAINT_RULES[constraintName] ?? {
+      code: FieldErrorCode.INVALID,
+      priority: UNKNOWN_PRIORITY,
+    }
+  );
 }

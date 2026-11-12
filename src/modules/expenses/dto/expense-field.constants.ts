@@ -1,0 +1,1 @@
+export const EXPENSE_NAME_MAX_LENGTH = 80;
